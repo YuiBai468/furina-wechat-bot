@@ -308,6 +308,11 @@ canvas.chart.sm{height:150px}
   .grid-6{grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}
   .topbar{font-size:11px}
 }
+/* 视频面板 */
+.row-video{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.06)}
+.row-video:last-child{border-bottom:none}
+.row-video .vid-head{margin-bottom:3px}
+.row-video .vid-sum{font-size:12px;line-height:1.55;color:#9fb0c8}
 </style>
 </head>
 <body>
@@ -326,7 +331,8 @@ canvas.chart.sm{height:150px}
     <div class="nav-item" data-act="nav" data-view="rate"><span class="ico">⏱</span><span class="txt">限速</span></div>
     <div class="nav-item" data-act="nav" data-view="chats"><span class="ico">👥</span><span class="txt">会话</span></div>
     <div class="nav-item" data-act="nav" data-view="images"><span class="ico">📷</span><span class="txt">配图</span></div>
-    <div class="nav-item" data-act="nav" data-view="logs"><span class="ico">📜</span><span class="txt">日志</span></div>
+    <div class="nav-item" data-act="nav" data-view="video"><span class="ico">🎬</span><span class="tx">视频</span></div>
+        <div class="nav-item" data-act="nav" data-view="logs"><span class="ico">📜</span><span class="txt">日志</span></div>
     <div class="nav-spacer"></div>
     <div class="side-foot" id="sideSeq">seq -</div>
   </aside>
@@ -493,6 +499,36 @@ canvas.chart.sm{height:150px}
       </section>
 
       <!-- ═══ 日志 ═══ -->
+      <section class="view" id="view-video">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">视频分享</span>
+            <span class="grow"></span>
+            <span class="card-sub" id="vidMeta">-</span>
+            <span class="btn" data-act="video-reload">刷新</span>
+          </div>
+          <div id="vidStatus"></div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <div class="card-head">
+            <span class="card-title">最近看过的</span>
+            <span class="grow"></span>
+            <span class="card-sub" id="vidCount">-</span>
+          </div>
+          <div id="vidList"></div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <div class="card-head">
+            <span class="card-title">她发出去的分享</span>
+            <span class="grow"></span>
+            <span class="card-sub" id="vidShareCount">-</span>
+          </div>
+          <div id="vidShares"></div>
+        </div>
+      </section>
+
       <section class="view" id="view-logs">
         <div class="card">
           <div class="card-head">
@@ -595,6 +631,7 @@ var S = {
   autoScroll: true,
   chats: null,             // /api/chats 的结果
   images: null,            // /api/images 的结果（图库 + 今日额度）
+  video: null,             // /api/video 的结果（今日次数 + 最近看过的视频）
   imgOpen: {},             // 展开中的提示词：{文件名: 1}
   chatSel: null,           // 当前选中的会话名
   hist: null,              // /api/history 的结果
@@ -1604,6 +1641,64 @@ function loadImages(){
     .catch(function(e){ S.images = {ok: false, error: String(e)}; renderImages(); });
 }
 
+/* ══ 视频 ══════════════════════════════════════════════════ */
+function loadVideo(){
+  return fetch("/api/video", {cache: "no-store"})
+    .then(function(r){ return r.json(); })
+    .then(function(j){ S.video = j; renderVideo(); })
+    .catch(function(e){ S.video = {ok: false, error: String(e)}; renderVideo(); });
+}
+
+function renderVideo(){
+  var j = S.video, st = $("vidStatus"), list = $("vidList"), sh = $("vidShares");
+  if(!j){ st.innerHTML = emptyBox("加载中…"); return; }
+  if(!j.ok){
+    st.innerHTML = emptyBox(j.error || "没有数据");
+    list.innerHTML = ""; sh.innerHTML = "";
+    return;
+  }
+
+  var used = j.todayCount || 0, cap = j.dailyLimit || 3;
+  $("vidMeta").textContent = "今日 " + used + " / " + cap;
+  $("vidCount").textContent = (j.videos || []).length + " 个";
+
+  var chips = "";
+  chips += '<span class="badge ' + (j.enabled ? "b-ok" : "b-muted") + '">' +
+           (j.enabled ? "已启用" : "已关闭") + "</span>";
+  chips += '<span class="badge ' + (used >= cap ? "b-danger" : "b-accent") + '">' +
+           "今日 " + used + " / " + cap + "</span>";
+  chips += '<span class="badge b-muted">她会自己刷 B 站，也会看你发的链接</span>';
+  st.innerHTML = '<div class="chips" style="margin:4px 0 10px">' + chips + "</div>";
+
+  var vs = j.videos || [];
+  if(!vs.length){
+    list.innerHTML = emptyBox("她还没看过视频");
+  } else {
+    var html = "";
+    vs.forEach(function(v){
+      html += '<div class="row-video">' +
+        '<div class="vid-head"><b>' + esc(v.title || "(无标题)") + "</b>" +
+        '<span class="muted" style="margin-left:8px">' +
+        esc(v.chat || "") + " · " + fmtTime(v.ts) + "</span></div>" +
+        '<div class="vid-sum">' + esc(v.summary || "") + "</div></div>";
+    });
+    list.innerHTML = html;
+  }
+
+  var ss = j.shares || [];
+  $("vidShareCount").textContent = ss.length + " 条";
+  if(!ss.length){
+    sh.innerHTML = emptyBox("还没分享过");
+  } else {
+    var h2 = "";
+    ss.slice().reverse().forEach(function(x){
+      h2 += '<div class="row-video"><div class="vid-sum">' +
+            esc(x.content || "").replace(/\n/g, "<br>") + "</div></div>";
+    });
+    sh.innerHTML = h2;
+  }
+}
+
 function renderImages(){
   var j = S.images, st = $("imgStatus"), grid = $("imgGrid");
   if(!j){ grid.innerHTML = emptyBox("加载中…"); return; }
@@ -1690,6 +1785,7 @@ function renderActive(force){
   else if(v === "rate") renderRate();
   else if(v === "chats"){ if(!S.chats) loadChats(); else renderChats(); }
   else if(v === "images"){ if(!S.images) loadImages(); else renderImages(); }
+  else if(v === "video"){ loadVideo(); }
   else if(v === "logs") renderLogs(force);
 }
 

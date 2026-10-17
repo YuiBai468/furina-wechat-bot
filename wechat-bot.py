@@ -40,7 +40,7 @@ from wechatauto.guia import quick_send
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # 视频管线（bili / asr / frames / summarize / pipeline / task）放在这里
-_VIDEO_DIR = os.path.join(HERE, "video")
+_VIDEO_DIR = r"D:\work"
 if os.path.isdir(_VIDEO_DIR) and _VIDEO_DIR not in sys.path:
     sys.path.insert(0, _VIDEO_DIR)
 
@@ -63,13 +63,13 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     #    900 是实测稳的值。
     "maxTokens": 900,
     # 从 DSH 的凭据库里取 key，避免明文复制到本文件
-    "credentialsFile": os.path.expanduser("~/.dsh/.credentials.yaml"),
+    "credentialsFile": r"C:\Users\YuBai\.dsh\.credentials.yaml",
     "credentialsRef": "DEEPSEEK_API_KEY",
     # 也可以直接写死（留空表示不用）
     "apiKey": "",
 
     # ── 人设 ──────────────────────────────────────────────────────────────
-    "personaFile": os.path.join(HERE, "persona", "furina.md"),
+    "personaFile": r"C:\Users\YuBai\.dsh\qq-bridge-persona.md",
     # 人设文件是给"会工具调用的 agent"写的，这里补一句把它拉回纯聊天
     "runtimeNote": (
         "你现在在一个微信聊天窗口里，对面是人。\n"
@@ -80,15 +80,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 
     # ── 每个会话的策略 ────────────────────────────────────────────────────
     # mode: "always" 说话就回 ｜ "wake" 被叫到或抽中概率才回 ｜ "off" 完全不理
-    # ⚠️ name 必须和微信里显示的完全一致（备注优先于昵称！）
     "chats": [
-        {"name": "旅行者", "mode": "always", "kind": "private",
-         "personaFile": os.path.join(HERE, "persona", "furina.md"),
-         "proactive": True},
-        {"name": "示例群聊", "mode": "wake", "kind": "group"},
+        {"name": "主人", "mode": "always", "kind": "private"},
+        {"name": "米奇妙妙屋", "mode": "wake", "kind": "group"},
+        {"name": "相侵相碍六家人", "mode": "wake", "kind": "group"},
+        {"name": "麻豆传媒", "mode": "wake", "kind": "group"},
     ],
     # 命中即唤醒（正文包含任一即算被叫）
-    "nicknames": ["芙宁娜", "芙芙"],
+    "nicknames": ["大肥鱼", "肥鱼", "谁最帅", "谁帅", "最帅的人"],
     # 没被叫到时，按这个概率随机搭话
     "wakeProbability": 0.05,
     # 唤醒后开的"会话跟随"窗口（秒）。**默认关**。
@@ -306,7 +305,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "quietHours": [],         # 空 = 不静默（睡眠相关本来就要夜里说）
     },
 
-    "logFile": os.path.join(HERE, "logs", "wechat-bot.log"),
+    "logFile": r"D:\llm\logs\wechat-bot.log",
 }
 
 
@@ -1231,6 +1230,7 @@ class HealthServer:
                 _quiet = path in ("/api/state", "/console", "/console/", "/index.html",
                                    "/favicon.ico", "/events",
                                    "/api/chats", "/api/history",
+                                   "/api/video",
                                    "/api/images", "/api/imagefile")
                 if outer.bot.health_debug and not _quiet:
                     log(f"  收到 HTTP GET  来自 {self.client_address[0]}  {self.path[:60]}")
@@ -1249,6 +1249,8 @@ class HealthServer:
                     q = parse_qs(urlparse(self.path).query)
                     return self._json(200, self._api_history((q.get("chat") or [""])[0]))
                 # ── 看板：配图 ────────────────────────────────────────
+                if path == "/api/video":
+                    return self._json(200, self._api_video())
                 if path == "/api/images":
                     return self._json(200, self._api_images())
                 if path == "/api/imagefile":
@@ -1332,6 +1334,64 @@ class HealthServer:
                         "maxBubbles": CFG.get("maxBubbles"),
                         "groupMaxBubbles": CFG.get("groupMaxBubbles"),
                         "personaDefault": os.path.basename(str(CFG.get("personaFile") or ""))}
+
+            # ── 看板：视频 ────────────────────────────────────────────
+            def _api_video(self) -> Dict[str, Any]:
+                """今天分享了几次 + 最近看过的视频（从上下文里翻）。"""
+                b = self._bot()
+                if b is None:
+                    return {"ok": False, "error": "bot 未就绪"}
+                now = time.time()
+                day = time.strftime("%Y-%m-%d")
+                vc = CFG.get("video") or {}
+                limit = int(vc.get("dailyLimit") or 3)
+                times = [t for t in (b.video_times or [])
+                         if time.strftime("%Y-%m-%d", time.localtime(t)) == day]
+
+                videos = []
+                for conf in (CFG.get("chats") or []):
+                    name = str(conf.get("name") or "")
+                    for m in (b.ctx.get(name) or []):
+                        c = str(m.get("content") or "")
+                        if "（你看完的视频《" not in c:
+                            continue
+                        rest = c.split("（你看完的视频《", 1)[1]
+                        i = rest.rfind("》")
+                        if i < 0:
+                            continue
+                        title = rest[:i]
+                        summary = rest[i + 2:].rstrip("）").strip()
+                        ts = 0.0
+                        mm = re.match(r"^\[(\d{2}-\d{2}) (\d{2}:\d{2})\]", c)
+                        if mm:
+                            try:
+                                ts = time.mktime(time.strptime(
+                                    time.strftime("%Y-") + mm.group(1) + " " + mm.group(2),
+                                    "%Y-%m-%d %H:%M"))
+                            except Exception:
+                                ts = 0.0
+                        videos.append({"chat": name, "title": title,
+                                       "summary": summary[:200], "ts": ts or now})
+                videos.sort(key=lambda x: x.get("ts") or 0, reverse=True)
+
+                # 她分享视频发出去的原话（从 assistant 消息里找带 b23.tv 的）
+                shares = []
+                for conf in (CFG.get("chats") or []):
+                    name = str(conf.get("name") or "")
+                    for m in (b.ctx.get(name) or []):
+                        if m.get("role") != "assistant":
+                            continue
+                        c = str(m.get("content") or "")
+                        if "b23.tv/" in c:
+                            shares.append({"chat": name, "content": c[:300]})
+                shares = shares[-6:]
+
+                return {"ok": True, "now": now,
+                        "enabled": bool(vc.get("enabled", True)),
+                        "dailyLimit": limit,
+                        "todayCount": len(times),
+                        "videos": videos[:6],
+                        "shares": shares}
 
             # ── 看板：配图（图库 + 今日额度）─────────────────────────
             def _photo_dir(self) -> str:
