@@ -1,0 +1,233 @@
+{
+ "baseUrl": "https://api.deepseek.com",
+ "model": "deepseek-flash",
+ "credentialsFile": "~/.dsh/.credentials.yaml",
+ "credentialsRef": "DEEPSEEK_API_KEY",
+ "apiKey": "",
+ "personaFile": "persona/furina.md",
+ "chats": [
+  {
+   "name": "旅行者",
+   "mode": "always",
+   "personaFile": "persona/furina.md",
+   "proactive": true,
+   "kind": "private",
+   "aliases": []
+  },
+  {
+   "name": "示例群聊",
+   "mode": "wake",
+   "kind": "group"
+  }
+ ],
+ "nicknames": [
+  "芙宁娜",
+  "芙芙"
+ ],
+ "wakeProbability": 0.03,
+ "followupSeconds": 0,
+ "historyLimit": 0,
+ "compactAtChars": 500000,
+ "compactKeepRecent": 20,
+ "contextFile": "data/contexts.json",
+ "sendDelayMin": 1,
+ "sendDelayMax": 5,
+ "dailySendLimit": 600,
+ "readDelay": 0.3,
+ "selfSenderId": 2,
+ "logFile": "logs/wechat-bot.log",
+ "thinking": "low",
+ "temperature": 1.15,
+ "maxTokens": 900,
+ "maxBubbles": 5,
+ "bubbleGapMin": 0.5,
+ "bubbleGapMax": 2,
+ "proactive": {
+  "enabled": true,
+  "checkSeconds": 30,
+  "silenceMin": [
+   50,
+   160
+  ],
+  "nudgeMin": [
+   6,
+   20
+  ],
+  "angryMin": [
+   45,
+   110
+  ],
+  "lastMin": [
+   200,
+   400
+  ],
+  "dailyLimit": 2,
+  "minGapMin": 40,
+  "chance": 0.65,
+  "quietHours": [
+   1,
+   7
+  ]
+ },
+ "debounceSeconds": 2,
+ "debounceMaxSeconds": 6,
+ "sendTimeoutSeconds": 75,
+ "sendHardTimeoutSeconds": 150,
+ "sendPauseSeconds": 300,
+ "rhythmProfile": "fast",
+ "rhythmBurst": 0,
+ "rhythmWindow": 0,
+ "humanize": {
+  "enabled": true,
+  "sleepHours": [
+   1,
+   7
+  ],
+  "sleepDelayMin": 3,
+  "sleepDelayMax": 30,
+  "sleepSilentChance": 0.25,
+  "slowReplyChance": 0.1,
+  "slowReplyMin": 3,
+  "slowReplyMax": 10,
+  "sleepWakeWords": [
+   "睡不着",
+   "失眠",
+   "睡不着觉",
+   "难受",
+   "好难受",
+   "想你了",
+   "好想你",
+   "出事了",
+   "怎么办",
+   "哭了",
+   "救",
+   "急",
+   "怕"
+  ],
+  "sleepWakeDelayMin": 6,
+  "sleepWakeDelayMax": 25,
+  "sleepEscalateFactor": 0.55,
+  "sleepEscalateWindowMin": 12,
+  "awakeIfSpokeWithinMin": 20,
+  "sleepDelayHardCap": 30
+ },
+ "schedule": {
+  "enabled": true,
+  "wake": {
+   "enabled": true,
+   "at": "07:00",
+   "jitterMin": 40
+  },
+  "meals": [
+   {
+    "enabled": true,
+    "name": "早饭",
+    "at": "09:00",
+    "jitterMin": 50
+   },
+   {
+    "enabled": true,
+    "name": "午饭",
+    "at": "12:40",
+    "jitterMin": 60
+   },
+   {
+    "enabled": true,
+    "name": "晚饭",
+    "at": "18:40",
+    "jitterMin": 60
+   }
+  ],
+  "sleep": {
+   "enabled": true,
+   "at": "01:00",
+   "jitterMin": 45
+  },
+  "insomnia": {
+   "enabled": true,
+   "from": "23:30",
+   "to": "00:45",
+   "minDays": 1,
+   "maxDays": 2,
+   "aheadMin": 2,
+   "aheadMax": 6
+  },
+  "catchUpMinutes": 60,
+  "randomChats": {
+   "enabled": true,
+   "from": "09:30",
+   "to": "23:30",
+   "minPerDay": 3,
+   "maxPerDay": 3,
+   "avoidMinutes": 45,
+   "minGapAfterHerMin": 20
+  }
+ },
+ "groupCooldownSeconds": 45,
+ "quietHours": [],
+ "groupMaxBubbles": 2,
+ "imageLookbackSeconds": 180,
+ "minBubbleChars": 6,
+ "maxBubbleChars": 26,
+ "absoluteMaxBubbles": 5,
+ "health": {
+  "enabled": false,
+  "port": 8765,
+  "token": "CHANGE_ME_RANDOM_STRING",
+  "hrHigh": 150,
+  "hrHard": 170,
+  "hrExtreme": 190,
+  "hrSustainSeconds": 0,
+  "spo2Low": 90,
+  "stressLow": 20,
+  "stressHigh": 40,
+  "sleepShortH": 5,
+  "sleepLongH": 10,
+  "wakeLateHour": 12,
+  "nightStartH": 1,
+  "nightEndH": 5,
+  "sleepFreshMin": 120,
+  "workoutGraceMin": 10,
+  "workoutStaleHours": 3,
+  "hrExtremeInWorkout": 190,
+  "cooldownMin": 10,
+  "dailyLimit": 10,
+  "quietHours": [],
+  "restHrJump": 8,
+  "afterUserQuietMin": 3,
+  "nightQuietStart": 2,
+  "nightQuietEnd": 6,
+  "debug": true
+ },
+ "silkDecoder": "bin/silk_v3_decoder.exe",
+ "asr": {
+  "enabled": true,
+  "ref": "QWEN_API_KEY",
+  "model": "qwen3-asr-flash",
+  "language": "zh",
+  "maxSeconds": 180,
+  "fastCharsPerSec": 6.5,
+  "slowCharsPerSec": 2.5
+ },
+ "stripEmojiInPrivate": true,
+ "image": {
+  "enabled": true,
+  "model": "qwen-image-3.0-pro",
+  "size": "1024*1024",
+  "promptExtend": false,
+  "ref": "QWEN_API_KEY",
+  "refs": [
+   "refs/furina_face.jpg",
+   "refs/furina_card.jpg"
+  ],
+  "saveDir": "images_out",
+  "maxPerDay": 4,
+  "writerModel": "deepseek-flash",
+  "character": "芙宁娜（原神·枫丹）。银白色短发、发尾蓝色渐变，蓝色大眼睛，蓝色高礼帽配金色冠饰，白蓝金三色华丽礼服外套，蓝色缎带与蓝宝石胸针，白手套，短裤配黑色长筒靴。",
+  "requireAsk": false
+ },
+ "video": {
+  "enabled": true,
+  "dailyLimit": 3
+ }
+}

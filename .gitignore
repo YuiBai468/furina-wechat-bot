@@ -1,0 +1,34 @@
+# 本地数据 / 隐私
+data/*
+!data/.gitkeep
+logs/*
+!logs/.gitkeep
+images_out/
+voice_tmp/
+refs/*.jpg
+refs/*.png
+
+# 配置里有密钥，只留示例
+bot-config.json
+
+# 备份
+*.bak
+*.bak-*
+*.bak.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 临时
+*.part
+_trigger_video.txt
