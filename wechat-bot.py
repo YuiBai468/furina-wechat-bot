@@ -40,7 +40,7 @@ from wechatauto.guia import quick_send
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # 视频管线（bili / asr / frames / summarize / pipeline / task）放在这里
-_VIDEO_DIR = r"D:\work"
+_VIDEO_DIR = os.path.join(HERE, "video")
 if os.path.isdir(_VIDEO_DIR) and _VIDEO_DIR not in sys.path:
     sys.path.insert(0, _VIDEO_DIR)
 
@@ -63,13 +63,13 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     #    900 是实测稳的值。
     "maxTokens": 900,
     # 从 DSH 的凭据库里取 key，避免明文复制到本文件
-    "credentialsFile": r"C:\Users\YuBai\.dsh\.credentials.yaml",
+    "credentialsFile": os.path.expanduser("~/.dsh/.credentials.yaml"),
     "credentialsRef": "DEEPSEEK_API_KEY",
     # 也可以直接写死（留空表示不用）
     "apiKey": "",
 
     # ── 人设 ──────────────────────────────────────────────────────────────
-    "personaFile": r"C:\Users\YuBai\.dsh\qq-bridge-persona.md",
+    "personaFile": os.path.join(HERE, "persona", "furina.md"),
     # 人设文件是给"会工具调用的 agent"写的，这里补一句把它拉回纯聊天
     "runtimeNote": (
         "你现在在一个微信聊天窗口里，对面是人。\n"
@@ -81,13 +81,13 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     # ── 每个会话的策略 ────────────────────────────────────────────────────
     # mode: "always" 说话就回 ｜ "wake" 被叫到或抽中概率才回 ｜ "off" 完全不理
     "chats": [
-        {"name": "主人", "mode": "always", "kind": "private"},
-        {"name": "米奇妙妙屋", "mode": "wake", "kind": "group"},
-        {"name": "相侵相碍六家人", "mode": "wake", "kind": "group"},
-        {"name": "麻豆传媒", "mode": "wake", "kind": "group"},
+        {"name": "旅行者", "mode": "always", "kind": "private",
+         "personaFile": os.path.join(HERE, "persona", "furina.md"),
+         "proactive": True},
+        {"name": "示例群聊", "mode": "wake", "kind": "group"},
     ],
     # 命中即唤醒（正文包含任一即算被叫）
-    "nicknames": ["大肥鱼", "肥鱼", "谁最帅", "谁帅", "最帅的人"],
+    "nicknames": ["芙宁娜", "芙芙"],
     # 没被叫到时，按这个概率随机搭话
     "wakeProbability": 0.05,
     # 唤醒后开的"会话跟随"窗口（秒）。**默认关**。
@@ -305,7 +305,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "quietHours": [],         # 空 = 不静默（睡眠相关本来就要夜里说）
     },
 
-    "logFile": r"D:\llm\logs\wechat-bot.log",
+    "logFile": os.path.join(HERE, "logs", "wechat-bot.log"),
 }
 
 
