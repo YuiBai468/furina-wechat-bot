@@ -1345,6 +1345,12 @@ class HealthServer:
                 day = time.strftime("%Y-%m-%d")
                 vc = CFG.get("video") or {}
                 limit = int(vc.get("dailyLimit") or 3)
+                # 内存空就先去状态文件捞（重启后第一次访问看板也能显示对）
+                if not b.video_times:
+                    try:
+                        b.video_times = b._video_state_load()
+                    except Exception:
+                        pass
                 times = [t for t in (b.video_times or [])
                          if time.strftime("%Y-%m-%d", time.localtime(t)) == day]
 
@@ -4434,12 +4440,32 @@ class Bot:
             return                       # 一次只处理一个会话
 
     # ── 视频分享 ────────────────────────────────────────────────────────
+    # ── 视频计数持久化 ──────────────────────────────────────────────────
+    def _video_state_load(self) -> List[float]:
+        """从作息状态文件读回发过视频的时间（重启不丢）。"""
+        try:
+            raw = (self._sched_load() or {}).get("videoTimes") or []
+            return [float(x) for x in raw if isinstance(x, (int, float))]
+        except Exception:
+            return []
+
+    def _video_state_save(self) -> None:
+        try:
+            st = self._sched_load() or {}
+            st["videoTimes"] = [float(t) for t in (self.video_times or [])][-300:]
+            self._sched_save(st)
+        except Exception as e:
+            log(f"  视频计数保存失败: {e}")
+
     def _video_allowed(self) -> bool:
         """今天还能不能发视频。"""
         vc = CFG.get("video") or {}
         if not vc.get("enabled", True):
             return False
         limit = int(vc.get("dailyLimit") or 1)
+        # 内存里没有就先从状态文件恢复 —— 否则重启后计数归零、上限失效
+        if not self.video_times:
+            self.video_times = self._video_state_load()
         day = time.strftime("%Y-%m-%d")
         n = sum(1 for t in self.video_times
                 if time.strftime("%Y-%m-%d", time.localtime(t)) == day)
@@ -4529,6 +4555,7 @@ class Bot:
             log("  视频模块加载失败: %s" % e)
             return
         self.video_times.append(time.time())
+        self._video_state_save()     # 落盘，重启后每日上限才有效
         log("  视频任务开始：搜「%s」" % keyword)
         try:
             r = V.pick_and_watch(keyword, verbose=False)

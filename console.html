@@ -331,7 +331,7 @@ canvas.chart.sm{height:150px}
     <div class="nav-item" data-act="nav" data-view="rate"><span class="ico">⏱</span><span class="txt">限速</span></div>
     <div class="nav-item" data-act="nav" data-view="chats"><span class="ico">👥</span><span class="txt">会话</span></div>
     <div class="nav-item" data-act="nav" data-view="images"><span class="ico">📷</span><span class="txt">配图</span></div>
-    <div class="nav-item" data-act="nav" data-view="video"><span class="ico">🎬</span><span class="tx">视频</span></div>
+    <div class="nav-item" data-act="nav" data-view="video"><span class="ico">🎬</span><span class="txt">视频</span></div>
         <div class="nav-item" data-act="nav" data-view="logs"><span class="ico">📜</span><span class="txt">日志</span></div>
     <div class="nav-spacer"></div>
     <div class="side-foot" id="sideSeq">seq -</div>
@@ -650,7 +650,7 @@ var UI = {
 // 会把用户刚滚到的位置和选中的文字冲掉，所以用"有新数据才重排 + 最多 5 秒兜底"。
 var DIRTY = true;          // 有未消费的新数据
 var lastHeavyAt = 0;       // 上次重排文本密集页的时刻
-var HEAVY_VIEWS = { health: 1, model: 1, output: 1, chats: 1, images: 1 };
+var HEAVY_VIEWS = { health: 1, model: 1, output: 1, chats: 1, images: 1, video: 1 };
 
 /* ── 小工具 ───────────────────────────────────────────────── */
 function $(id){ return document.getElementById(id); }
@@ -1453,7 +1453,7 @@ function renderLogs(force){
    ══════════════════════════════════════════════════════════════ */
 function switchView(v){
   S.view = v;
-  var views = ["overview", "health", "model", "output", "rate", "chats", "images", "logs"];
+  var views = ["overview", "health", "model", "output", "rate", "chats", "images", "video", "logs"];
   if(views.indexOf(v) < 0) v = S.view = "overview";
   for(var i = 0; i < views.length; i++){
     var el = $("view-" + views[i]);
@@ -1642,6 +1642,17 @@ function loadImages(){
 }
 
 /* ══ 视频 ══════════════════════════════════════════════════ */
+function fmtVideoTs(t){
+  if(!t) return "-";
+  var d = new Date(Number(t) * 1000);
+  if(isNaN(d.getTime())) return "-";
+  var now = new Date();
+  var sameDay = d.toDateString() === now.toDateString();
+  if(sameDay) return pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+  return (d.getMonth() + 1) + "-" + pad2(d.getDate()) + " " +
+         pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+}
+
 function loadVideo(){
   return fetch("/api/video", {cache: "no-store"})
     .then(function(r){ return r.json(); })
@@ -1679,7 +1690,7 @@ function renderVideo(){
       html += '<div class="row-video">' +
         '<div class="vid-head"><b>' + esc(v.title || "(无标题)") + "</b>" +
         '<span class="muted" style="margin-left:8px">' +
-        esc(v.chat || "") + " · " + fmtTime(v.ts) + "</span></div>" +
+        esc(v.chat || "") + " · " + fmtVideoTs(v.ts) + "</span></div>" +
         '<div class="vid-sum">' + esc(v.summary || "") + "</div></div>";
     });
     list.innerHTML = html;
@@ -1785,7 +1796,7 @@ function renderActive(force){
   else if(v === "rate") renderRate();
   else if(v === "chats"){ if(!S.chats) loadChats(); else renderChats(); }
   else if(v === "images"){ if(!S.images) loadImages(); else renderImages(); }
-  else if(v === "video"){ loadVideo(); }
+  else if(v === "video"){ if(!S.video) loadVideo(); else renderVideo(); }
   else if(v === "logs") renderLogs(force);
 }
 
@@ -1883,6 +1894,7 @@ document.addEventListener("click", function(ev){
   }
   else if(act === "clear-all"){ doClear({all: true}, "全部会话"); }
   else if(act === "images-reload"){ loadImages(); }
+  else if(act === "video-reload"){ S.video = null; loadVideo(); }
   else if(act === "img-toggle"){
     var nm = t.getAttribute("data-name");
     if(S.imgOpen[nm]) delete S.imgOpen[nm]; else S.imgOpen[nm] = 1;
@@ -1938,7 +1950,7 @@ fetchState().then(function(){
 // 支持 #health 这种深链和浏览器前进后退
 function viewFromHash(){
   var h = String(location.hash || "").replace("#", "");
-  return ["overview", "health", "model", "output", "rate", "logs", "chats", "images"].indexOf(h) >= 0 ? h : "overview";
+  return ["overview", "health", "model", "output", "rate", "logs", "chats", "images", "video"].indexOf(h) >= 0 ? h : "overview";
 }
 window.addEventListener("hashchange", function(){
   var v = viewFromHash();
