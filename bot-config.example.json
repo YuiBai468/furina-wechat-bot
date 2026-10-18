@@ -61,13 +61,14 @@
    200,
    400
   ],
-  "dailyLimit": 2,
+  "dailyLimit": 5,
   "minGapMin": 40,
   "chance": 0.65,
   "quietHours": [
    1,
    7
-  ]
+  ],
+  "nudgeEnabled": false
  },
  "debounceSeconds": 2,
  "debounceMaxSeconds": 6,
@@ -157,8 +158,8 @@
    "enabled": true,
    "from": "09:30",
    "to": "23:30",
-   "minPerDay": 3,
-   "maxPerDay": 3,
+   "minPerDay": 5,
+   "maxPerDay": 5,
    "avoidMinutes": 45,
    "minGapAfterHerMin": 20
   }
@@ -228,6 +229,16 @@
  },
  "video": {
   "enabled": true,
-  "dailyLimit": 3
+  "dailyLimit": 2,
+  "slotsPerDay": 2,
+  "from": "10:00",
+  "to": "23:00",
+  "catchUpMinutes": 90
+ },
+ "lifeplan": {
+  "enabled": true,
+  "chat": "旅行者",
+  "promises": true,
+  "weather": true
  }
 }

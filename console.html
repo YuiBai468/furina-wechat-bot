@@ -312,7 +312,7 @@ canvas.chart.sm{height:150px}
 .row-video{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.06)}
 .row-video:last-child{border-bottom:none}
 .row-video .vid-head{margin-bottom:3px}
-.row-video .vid-sum{font-size:12px;line-height:1.55;color:#9fb0c8}
+.row-video .vid-sum{font-size:12px;line-height:1.6;color:#9fb0c8;white-space:pre-wrap;word-break:break-word}
 </style>
 </head>
 <body>
@@ -332,6 +332,8 @@ canvas.chart.sm{height:150px}
     <div class="nav-item" data-act="nav" data-view="chats"><span class="ico">👥</span><span class="txt">会话</span></div>
     <div class="nav-item" data-act="nav" data-view="images"><span class="ico">📷</span><span class="txt">配图</span></div>
     <div class="nav-item" data-act="nav" data-view="video"><span class="ico">🎬</span><span class="txt">视频</span></div>
+        <div class="nav-item" data-act="nav" data-view="life"><span class="ico">📅</span><span class="txt">日程</span></div>
+        <div class="nav-item" data-act="nav" data-view="initiative"><span class="ico">💡</span><span class="txt">主动</span></div>
         <div class="nav-item" data-act="nav" data-view="logs"><span class="ico">📜</span><span class="txt">日志</span></div>
     <div class="nav-spacer"></div>
     <div class="side-foot" id="sideSeq">seq -</div>
@@ -529,6 +531,45 @@ canvas.chart.sm{height:150px}
         </div>
       </section>
 
+      <section class="view" id="view-life">
+        <div class="grid grid-4">
+          <div class="card"><div class="card-head"><span class="card-title">日期</span></div><div class="secs-big" id="lifeDate" style="font-size:16px">-</div></div>
+          <div class="card"><div class="card-head"><span class="card-title">天气</span></div><div id="lifeWeather" style="font-size:13px">-</div></div>
+          <div class="card"><div class="card-head"><span class="card-title">身体</span></div><div id="lifePeriod" style="font-size:13px">-</div></div>
+          <div class="card"><div class="card-head"><span class="card-title">状态</span></div><div id="lifeState" style="font-size:13px">-</div></div>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <div class="card-head"><span class="card-title">今日时间线</span><span class="grow"></span><span class="card-sub" id="lifeSegCount">-</span></div>
+          <div id="lifeTimeline" style="max-height:420px;overflow:auto"></div>
+        </div>
+        <div class="grid grid-2" style="margin-top:12px">
+          <div class="card"><div class="card-head"><span class="card-title">本月计划</span></div><div id="lifeMonth" style="max-height:360px;overflow:auto"></div></div>
+          <div class="card"><div class="card-head"><span class="card-title">承诺</span><span class="grow"></span><span class="card-sub" id="lifePromCount">-</span></div><div id="lifePromises"></div></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-initiative">
+        <div class="grid grid-3">
+          <div class="card">
+            <div class="card-head"><span class="card-title">动态配额</span><span class="grow"></span><span class="card-sub" id="iniQuotaSub">-</span></div>
+            <div class="secs-big"><span id="iniUsed">0</span><span class="muted" style="font-size:20px"> / <span id="iniMax">3</span></span></div>
+            <div class="muted" style="font-size:11px;margin-top:4px">芙芙自己决定发出的主动消息</div>
+          </div>
+          <div class="card">
+            <div class="card-head"><span class="card-title">待触发提醒</span><span class="grow"></span><span class="card-sub" id="iniRemCount">-</span></div>
+            <div id="iniRem"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><span class="card-title">长期授权</span><span class="grow"></span><span class="card-sub" id="iniIntentCount">-</span></div>
+            <div id="iniIntent"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <div class="card-head"><span class="card-title">今天的主动安排</span><span class="grow"></span><span class="card-sub" id="iniPlanSub">-</span></div>
+          <div id="iniPlan"></div>
+        </div>
+      </section>
+
       <section class="view" id="view-logs">
         <div class="card">
           <div class="card-head">
@@ -632,6 +673,7 @@ var S = {
   chats: null,             // /api/chats 的结果
   images: null,            // /api/images 的结果（图库 + 今日额度）
   video: null,             // /api/video 的结果（今日次数 + 最近看过的视频）
+  videoAt: 0,              // 上次拉视频数据的时间（做 5 秒兜底刷新）
   imgOpen: {},             // 展开中的提示词：{文件名: 1}
   chatSel: null,           // 当前选中的会话名
   hist: null,              // /api/history 的结果
@@ -742,6 +784,10 @@ function onEventArrived(ev){
     // 流式思考：只留最新一帧就够了，模型页拿它实时刷思考面板
     S.liveThink = { text: String(ev.text || ""), t: Number(ev.t) || nowSec(),
                     partial: !!ev.partial };
+  }else if(k === "video"){
+    // 她刚看了/分享了视频 → 数据作废，正在看这一页就立刻重拉
+    S.video = null;
+    if(S.view === "video") loadVideo();
   }else if(k === "health"){
     S.lastHealthAt = Number(ev.t) || nowSec();
     if(ev.src) S.lastHealthSrc = ev.src;
@@ -1453,7 +1499,7 @@ function renderLogs(force){
    ══════════════════════════════════════════════════════════════ */
 function switchView(v){
   S.view = v;
-  var views = ["overview", "health", "model", "output", "rate", "chats", "images", "video", "logs"];
+  var views = ["overview", "health", "model", "output", "rate", "chats", "images", "video", "life", "initiative", "logs"];
   if(views.indexOf(v) < 0) v = S.view = "overview";
   for(var i = 0; i < views.length; i++){
     var el = $("view-" + views[i]);
@@ -1656,7 +1702,7 @@ function fmtVideoTs(t){
 function loadVideo(){
   return fetch("/api/video", {cache: "no-store"})
     .then(function(r){ return r.json(); })
-    .then(function(j){ S.video = j; renderVideo(); })
+    .then(function(j){ S.video = j; S.videoAt = nowSec(); renderVideo(); })
     .catch(function(e){ S.video = {ok: false, error: String(e)}; renderVideo(); });
 }
 
@@ -1787,6 +1833,92 @@ function renderImages(){
   grid.innerHTML = html;
 }
 
+
+/* ═══ 主动（提醒 / 授权 / 配额） ═══ */
+function loadInitiative(){
+  fetch("/api/initiative", {cache: "no-store"}).then(function(r){ return r.json(); }).then(function(j){
+    S.initiative = j; S.initiativeAt = nowSec(); renderInitiative();
+  }).catch(function(){});
+}
+function fmtDue(s){
+  if(!s) return "-";
+  return String(s).replace("T", " ");
+}
+function renderInitiative(){
+  var j = S.initiative || {};
+  var used = j.dynamicUsed || 0, max = j.dynamicMax || 3;
+  $("iniUsed").textContent = used; $("iniMax").textContent = max;
+  $("iniQuotaSub").textContent = "剩余 " + Math.max(0, max - used) + " 条";
+  var rem = j.reminders || [];
+  $("iniRemCount").textContent = rem.length + " 条";
+  $("iniRem").innerHTML = rem.length ? rem.map(function(r){
+    return '<div class="kv-row"><span class="k">' + esc(fmtDue(r.due)) + '</span><span class="v">' +
+      esc(r.intent || "") + '</span></div>';
+  }).join("") : '<div class="empty">没有待触发的提醒</div>';
+  var its = j.intents || [];
+  $("iniIntentCount").textContent = its.length + " 条";
+  $("iniIntent").innerHTML = its.length ? its.map(function(x){
+    return '<div class="kv-row"><span class="k">' + esc(x.condition || "—") + '</span><span class="v">' +
+      esc(x.intent || "") + '</span></div>';
+  }).join("") : '<div class="empty">没有长期授权</div>';
+  var chats = j.planChats || [], vids = j.planVideos || [];
+  $("iniPlanSub").textContent = "日程闲聊 " + chats.length + " · 视频 " + vids.length + " · 决策点 " + (j.points || []).length;
+  var html = '<div class="kv-row"><span class="k">日程主动消息</span><span class="v">' + esc(chats.join("、") || "-") + '</span></div>' +
+             '<div class="kv-row"><span class="k">视频</span><span class="v">' + esc(vids.join("、") || "-") + '</span></div>' +
+             '<div class="kv-row"><span class="k">决策点</span><span class="v">' + esc((j.points || []).join("、")) + '</span></div>' +
+             '<div class="kv-row"><span class="k">今天已过决策点</span><span class="v">' + esc((j.decisionFired || []).join("、") || "无") + '</span></div>';
+  $("iniPlan").innerHTML = html;
+}
+
+
+/* ═══ 日程（时间线 / 月计划 / 承诺） ═══ */
+function loadLife(){
+  fetch("/api/life", {cache: "no-store"}).then(function(r){ return r.json(); }).then(function(j){
+    S.life = j; S.lifeAt = nowSec(); renderLife();
+  }).catch(function(){});
+}
+function renderLife(){
+  var j = S.life || {};
+  $("lifeDate").textContent = j.date || "-";
+  var w = j.weather || {};
+  $("lifeWeather").textContent = (w.kind || "-") + (w.note ? " · " + w.note : "");
+  $("lifePeriod").textContent = j.period || "-";
+  var st = j.state || {};
+  $("lifeState").textContent = st.date ? ("心情 " + (st.mood || "-") + "/5 · 疲劳 " + (st.fatigue || "-") + "/5 · 嗓子 " + (st.voice || "-") + "/5") : "-";
+  var tl = j.timeline || [];
+  $("lifeSegCount").textContent = tl.length + " 段";
+  $("lifeTimeline").innerHTML = tl.map(function(x){
+    return '<div class="kv-row"><span class="k" style="width:96px">' + x.from + '-' + x.to + '</span><span class="v">' +
+      esc(x.activity || "") + ' <span class="muted">@' + esc(x.place || "") + '</span>' +
+      (x.detail ? '<br><span class="muted" style="font-size:11px">' + esc(x.detail) + '</span>' : '') + '</span></div>';
+  }).join("") || '<div class="empty">没有日程</div>';
+  var mp = j.month || {};
+  var html = "";
+  if(mp.theme) html += '<div class="kv-row"><span class="k" style="width:64px">主题</span><span class="v">' + esc(mp.theme) + '</span></div>';
+  if((mp.weekly || []).length){
+    html += '<div class="muted" style="font-size:11px;margin:8px 0 4px">每周固定</div>';
+    (mp.weekly || []).forEach(function(w2){
+      html += '<div class="kv-row"><span class="k" style="width:64px">' + esc(w2.weekday || "") + '</span><span class="v">' + esc(w2.what || "") + '</span></div>';
+    });
+  }
+  if((mp.variety || []).length){
+    html += '<div class="muted" style="font-size:11px;margin:8px 0 4px">本月事件</div>';
+    (mp.variety || []).forEach(function(v){
+      html += '<div class="kv-row"><span class="k" style="width:64px">·</span><span class="v">' + esc(v) + '</span></div>';
+    });
+  }
+  if(mp.notes){
+    html += '<div class="muted" style="font-size:11px;margin:8px 0 4px">备注</div>' +
+            '<div class="muted" style="font-size:12px">' + esc(mp.notes) + '</div>';
+  }
+  $("lifeMonth").innerHTML = html || '<div class="empty">本月计划未生成</div>';
+  var ps = (j.promises || []).filter(function(p){ return p.status === "open" || p.status === "overdue"; });
+  $("lifePromCount").textContent = ps.length + " 条";
+  $("lifePromises").innerHTML = ps.map(function(p){
+    return '<div class="kv-row"><span class="k">' + esc(p.due || "") + '</span><span class="v">' + esc(p.promise || "") + '</span></div>';
+  }).join("") || '<div class="empty">没有承诺</div>';
+}
+
 function renderActive(force){
   var v = S.view;
   if(v === "overview") renderOverview();
@@ -1796,7 +1928,9 @@ function renderActive(force){
   else if(v === "rate") renderRate();
   else if(v === "chats"){ if(!S.chats) loadChats(); else renderChats(); }
   else if(v === "images"){ if(!S.images) loadImages(); else renderImages(); }
-  else if(v === "video"){ if(!S.video) loadVideo(); else renderVideo(); }
+  else if(v === "video"){ if(!S.video || nowSec() - (S.videoAt || 0) > 5) loadVideo(); else renderVideo(); }
+  else if(v === "life"){ if(!S.life || nowSec() - (S.lifeAt || 0) > 10) loadLife(); else renderLife(); }
+  else if(v === "initiative"){ if(!S.initiative || nowSec() - (S.initiativeAt || 0) > 5) loadInitiative(); else renderInitiative(); }
   else if(v === "logs") renderLogs(force);
 }
 
@@ -1950,7 +2084,7 @@ fetchState().then(function(){
 // 支持 #health 这种深链和浏览器前进后退
 function viewFromHash(){
   var h = String(location.hash || "").replace("#", "");
-  return ["overview", "health", "model", "output", "rate", "logs", "chats", "images", "video"].indexOf(h) >= 0 ? h : "overview";
+  return ["overview", "health", "model", "output", "rate", "logs", "chats", "images", "video", "life", "initiative"].indexOf(h) >= 0 ? h : "overview";
 }
 window.addEventListener("hashchange", function(){
   var v = viewFromHash();
